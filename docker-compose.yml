@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:13-alpine
+    container_name: ecompleto-db
+    environment:
+      POSTGRES_USER: ecompleto
+      POSTGRES_PASSWORD: ecompleto
+      POSTGRES_DB: ecompleto_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database:/docker-entrypoint-initdb.d 
+    networks:
+      - ecompleto-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@ecompleto.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    networks:
+      - ecompleto-network
+    depends_on:
+      - postgres
+
+networks:
+  ecompleto-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
