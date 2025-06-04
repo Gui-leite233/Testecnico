@@ -61,7 +61,8 @@ class ProcessoPagamentoController extends BaseController
     }
 
 
-    private function processaPedido($pedido){
+    private function processaPedido($pedido)
+    {
         try {
             $dadosClient = $this->preparaDados($pedido);
             $dadosPag = $this->preparaDadosPag($pedido, $dadosClient);
@@ -70,13 +71,13 @@ class ProcessoPagamentoController extends BaseController
             $this->salvaRetornoInter($pedido['id'], $retornoGwy);
 
             return [
-                'pedido_id'=>$pedido['id'],
-                'status'=>'processado',
-                'retorno_gateway'=>$retornoGwy
+                'pedido_id' => $pedido['id'],
+                'status' => 'processado',
+                'retorno_gateway' => $retornoGwy
             ];
         } catch (\Exception $e) {
-             log_message('error', "Erro ao processar pedido {$pedido['id']}: " . $e->getMessage());
-            
+            log_message('error', "Erro ao processar pedido {$pedido['id']}: " . $e->getMessage());
+
             return [
                 'pedido_id' => $pedido['id'],
                 'status' => 'erro',
@@ -86,57 +87,111 @@ class ProcessoPagamentoController extends BaseController
     }
 
 
-    private function preparaDados($pedido){
-        return[
-            'exeternal_id'=>(string)$pedido['id_cliente'],
-            'name'=>$pedido['cliente_nome'],
-            'type'=>'individual',
-            'email'=>$pedido['email'],
-            'document'=>[
-                'type'=>'cpf',
-                'number'=>$pedido['cpf_cpnj']
+    private function preparaDados($pedido)
+    {
+        return [
+            'exeternal_id' => (string) $pedido['id_cliente'],
+            'name' => $pedido['cliente_nome'],
+            'type' => 'individual',
+            'email' => $pedido['email'],
+            'document' => [
+                'type' => 'cpf',
+                'number' => $pedido['cpf_cpnj']
             ],
-            'birthday'=>$pedido['data_nasc']
+            'birthday' => $pedido['data_nasc']
         ];
     }
 
 
-    private function preparaDadosPag($pedido, $dadosClient) {
-        $venc=$pedido['vencimento'];
+    private function preparaDadosPag($pedido, $dadosClient)
+    {
+        $venc = $pedido['vencimento'];
         $vencFomtt = str_replace('-', '', $venc);
 
         return [
             'external_order_id' => $pedido['id'],
-            'amount'=>(float)$pedido['valor_total'],
-            'card_numer'=>$pedido['num_cartao'],
-            'card_cvv'=>(string)$pedido['codigo_verificador'],
-            'card_expiration_date'=>$vencFomtt,
-            'card_holder_name'=>$pedido['nome_portador'],
-            'customer'=>$dadosClient
+            'amount' => (float) $pedido['valor_total'],
+            'card_numer' => $pedido['num_cartao'],
+            'card_cvv' => (string) $pedido['codigo_verificador'],
+            'card_expiration_date' => $vencFomtt,
+            'card_holder_name' => $pedido['nome_portador'],
+            'customer' => $dadosClient
         ];
     }
 
-    private function atualizaStatus($pedido, $retornoGateway) {
+    private function atualizaStatus($pedido, $retornoGateway)
+    {
         $novoStatus = 1;
 
-        if(isset($retornoGateway['error']) && $retornoGateway['Error']==false){
-            if(isset($retornoGateway['Transaction_code'])&&$retornoGateway['Transaction_code']==00){
-                $novoStatus=2;//deu boa
+        if (isset($retornoGateway['error']) && $retornoGateway['Error'] == false) {
+            if (isset($retornoGateway['Transaction_code']) && $retornoGateway['Transaction_code'] == 00) {
+                $novoStatus = 2;//deu boa
             }
-        } else{
+        } else {
             $novoStatus = 3;//deu ruim
         }
 
-        $this->pedidosModel->update($pedido['id'], ['id_situacao'=>$novoStatus]);
+        $this->pedidosModel->update($pedido['id'], ['id_situacao' => $novoStatus]);
     }
 
 
-    private function salvaRetornoInter($pedido, $retornoGateway) {
+    private function salvaRetornoInter($pedido, $retornoGateway)
+    {
         $retornoJson = json_encode($retornoGateway);
         $ProcessDate = date('Y-m-d H:i:s');
 
         $builder = $this->pedpagModel->db->table('pedidos_pagamentos');
         $builder->where('id_pedido', $pedido);
-        $builder->update(['update_intermediador'=> $retornoJson, 'data_processamento'=>$ProcessDate]);
+        $builder->update(['update_intermediador' => $retornoJson, 'data_processamento' => $ProcessDate]);
     }
+
+    private function processaTransacao($dadosPag, $pagCompletoGateway)
+    {
+        if (!isset($dadosPag['external_order_id'], $dadosPag['amount'], $dadosPag['card_number'], $dadosPag['card_cvv'], $dadosPag['card_expiration_date'], $dadosPag['card_holder_name'], $dadosPag['customer'])) {
+            return [
+                'error' => true,
+                'message' => 'Dados incompletos'
+            ];
+        }
+
+        try {
+            $retornoGateway = $this->pagCompletoGateway->processaTransacao($dadosPag);
+
+            if (isset($retornoGateway['error']) && $retornoGateway['error'] === true) {
+                return [
+                    'error' => true,
+                    'message' => $retornoGateway['message'] ?? 'Erro no gateway'
+                ];
+            }
+
+           
+            if (
+                isset($retornoGateway['transaction_code']) &&
+                $retornoGateway['transaction_code'] === '00'
+            ) {
+                
+                return [
+                    'error' => false,
+                    'transaction_code' => $retornoGateway['transaction_code'],
+                    'authorization_code' => $retornoGateway['authorization_code'] ?? null,
+                    'payment_id' => $retornoGateway['payment_id'] ?? null,
+                    'status' => 'approved'
+                ];
+            } else {
+                return [
+                    'error' => true,
+                    'code' => $retornoGateway['transaction_code'] ?? 'unknown',
+                    'message' => $retornoGateway['error_message'] ?? 'Pagamento recusado'
+                ];
+            }
+        } catch (\Exception $e) {
+            return [
+                'error' => true,
+                'message' => 'Falha ao comunicar com o gateway',
+                'details' => $e->getMessage()
+            ];
+        }
+    }
+
+     
 }

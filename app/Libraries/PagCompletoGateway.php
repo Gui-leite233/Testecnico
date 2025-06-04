@@ -192,7 +192,53 @@ class PagCompletoGateway{
         return $venc;
     }
 
+    public function processaTransacao(array $dadosPag) {
+        
+        $retorno = $this->transacao($dadosPag);
 
+        try {
+            $this->validateDadosTr($dadosPag);
+        } catch (\Exception $e) {
+            return[
+                'error'=>true,
+                'message'=>'Validação falha: ' . $e->getMessage()
+            ];
+        }
+
+        try {
+            $retornoRaw = $this->transacao($dadosPag);
+        } catch (\Exception $e) {
+            return[
+                'error'=>true,
+                'message'=>'exceção: ' . $e->getMessage()
+            ];
+        }
+
+        if(isset($retornoRaw['Error'])&&$retornoRaw['Error']==true){
+            return[
+                'error'=>true,
+                'code'=>$retornoRaw['Transaction_code']??'99',
+                'message'=>$retornoRaw['Message']??'Erro gateway'
+            ];
+        }
+
+        if(isset($retornoRaw['Transaction_code'])&&$retornoRaw['Transaction_code']==='00'){
+            return[
+                'error'=>false,
+                'transaction_code'=>$retornoRaw['Transaction_code'],
+                'authorization_code'=>$retornoRaw['authorization_code']??null,
+                'payment_id'=>$retornoRaw['payment_id']??null,
+                'staus'=>'approved'
+            ];
+        }
+
+        return[
+            'error'=>true,
+            'code'=>$retornoRaw['Transaction_code']??'unknown',
+            'message'=>$retornoRaw['Message']??'recusado'
+        ];
+        
+    }
 
     public function setTimeout($timeout){
         $this->timeout = (int)$timeout;
