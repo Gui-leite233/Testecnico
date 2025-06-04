@@ -4,15 +4,15 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class Clientes extends Model
+class LojasGateway extends Model
 {
-    protected $table            = 'clientes';
+    protected $table            = 'lojas_gateways';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = [];
+    protected $allowedFields    = ['id', 'id_loja', 'id_gateway'];
 
     protected bool $allowEmptyInserts = false;
     protected bool $updateOnlyChanged = true;

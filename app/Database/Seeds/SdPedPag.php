@@ -118,5 +118,6 @@ class SdPedPag extends Seeder
                 'vencimento' => null
             ]
         ];
+        $this->db->table('PedidosPagamentos')->insertBatch($data);
     }
 }

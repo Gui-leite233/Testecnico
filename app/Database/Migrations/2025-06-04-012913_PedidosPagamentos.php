@@ -14,7 +14,7 @@ class PedidosPagamentos extends Migration
             'id' => [
                 'type' => 'INT',
                 'unsigned' => true,
-                'auto_increment' => false,
+                'auto_increment' => true,
                 'null' => false,
             ],
             'id_pedido' => [
