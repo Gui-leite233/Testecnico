@@ -40,6 +40,6 @@ class SdLojGway extends Seeder
                 'id_gateway' => 1
             ]
         ];
-        $this->db->table('LojasGateway')->insertBatch($data);
+        $this->db->table('lojas_gateway')->insertBatch($data);
     }
 }

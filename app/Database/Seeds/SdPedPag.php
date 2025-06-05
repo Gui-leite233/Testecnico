@@ -12,7 +12,7 @@ class SdPedPag extends Seeder
             [
                 'id' => 103013,
                 'id_pedido' => 98302,
-                'id_formapagto' => 3,
+                'id_formatopagto' => 3,
                 'qtd_parcelas' => 4,
                 'retorno_intermediador' => null,
                 'data_processamento' => null,
@@ -24,7 +24,7 @@ class SdPedPag extends Seeder
             [
                 'id' => 103014,
                 'id_pedido' => 98303,
-                'id_formapagto' => 3,
+                'id_formatopagto' => 3,
                 'qtd_parcelas' => 2,
                 'retorno_intermediador' => null,
                 'data_processamento' => null,
@@ -36,7 +36,7 @@ class SdPedPag extends Seeder
             [
                 'id' => 103015,
                 'id_pedido' => 98304,
-                'id_formapagto' => 1,
+                'id_formatopagto' => 1,
                 'qtd_parcelas' => 1,
                 'retorno_intermediador' => null,
                 'data_processamento' => null,
@@ -48,7 +48,7 @@ class SdPedPag extends Seeder
             [
                 'id' => 103016,
                 'id_pedido' => 98305,
-                'id_formapagto' => 2,
+                'id_formatopagto' => 2,
                 'qtd_parcelas' => 1,
                 'retorno_intermediador' => null,
                 'data_processamento' => null,
@@ -60,7 +60,7 @@ class SdPedPag extends Seeder
             [
                 'id' => 103017,
                 'id_pedido' => 98306,
-                'id_formapagto' => 3,
+                'id_formatopagto' => 3,
                 'qtd_parcelas' => 1,
                 'retorno_intermediador' => null,
                 'data_processamento' => null,
@@ -72,7 +72,7 @@ class SdPedPag extends Seeder
             [
                 'id' => 103018,
                 'id_pedido' => 98307,
-                'id_formapagto' => 3,
+                'id_formatopagto' => 3,
                 'qtd_parcelas' => 1,
                 'retorno_intermediador' => null,
                 'data_processamento' => null,
@@ -84,7 +84,7 @@ class SdPedPag extends Seeder
             [
                 'id' => 103019,
                 'id_pedido' => 98308,
-                'id_formapagto' => 3,
+                'id_formatopagto' => 3,
                 'qtd_parcelas' => 5,
                 'retorno_intermediador' => null,
                 'data_processamento' => null,
@@ -96,7 +96,7 @@ class SdPedPag extends Seeder
             [
                 'id' => 103020,
                 'id_pedido' => 98309,
-                'id_formapagto' => 2,
+                'id_formatopagto' => 2,
                 'qtd_parcelas' => 1,
                 'retorno_intermediador' => null,
                 'data_processamento' => null,
@@ -108,7 +108,7 @@ class SdPedPag extends Seeder
             [
                 'id' => 103021,
                 'id_pedido' => 98310,
-                'id_formapagto' => 1,
+                'id_formatopagto' => 1,
                 'qtd_parcelas' => 1,
                 'retorno_intermediador' => null,
                 'data_processamento' => null,
@@ -118,6 +118,6 @@ class SdPedPag extends Seeder
                 'vencimento' => null
             ]
         ];
-        $this->db->table('PedidosPagamentos')->insertBatch($data);
+        $this->db->table('pedidos_pagamentos')->insertBatch($data);
     }
 }

@@ -22,6 +22,6 @@ class SdPedSitu extends Seeder
                 'descricao' => 'Pedido Cancelado'
             ]
         ];
-        $this->db->table('PedidoSituacao')->insertBatch($data);
+        $this->db->table('pedido_situacao')->insertBatch($data);
     }
 }

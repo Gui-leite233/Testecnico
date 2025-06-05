@@ -91,7 +91,7 @@ class SdPedidos extends Seeder
                 'id_situacao' => 1
             ]
         ];
-        $this->db->table('Pedidos')->insertBatch($data);
+        $this->db->table('pedidos')->insertBatch($data);
 
     }
 }

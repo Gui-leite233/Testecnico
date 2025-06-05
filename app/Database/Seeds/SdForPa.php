@@ -22,7 +22,7 @@ class SdForPa extends Seeder
                 'descricao' => 'Cartão de Crédito'
             ]
         ];
-        $this->db->table('FormasPagamento')->insertBatch($data);
+        $this->db->table('formas_pagamento')->insertBatch($data);
 
     }
 }

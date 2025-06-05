@@ -1,16 +1,15 @@
 <?php
 
 use CodeIgniter\Router\RouteCollection;
+use App\Controllers\ProcessoPagamentoController;
 
 /**
  * @var RouteCollection $routes
  */
-$routes->get('/', 'Home::index');
+
 
 
 $routes->group('pagamentos', function($routes){
-    $routes->get('processar'. 'ProcessoPagamentoController::index');
-    
-    
-
+    $routes->get('processar', 'ProcessoPagamentoController::index');
 });
+

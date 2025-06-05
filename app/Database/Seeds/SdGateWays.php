@@ -25,6 +25,6 @@ class SdGateWays extends Seeder
                 'endpoint' => 'https://api.pagseguro.com.br/transactions/'
             ]
         ];
-        $this->db->table('Gateways')->insertBatch($data);
+        $this->db->table('gateways')->insertBatch($data);
     }
 }
