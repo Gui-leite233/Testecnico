@@ -105,19 +105,38 @@ class ProcessoPagamentoController extends BaseController
     }
 
 
-    private function preparaDadosPag($pedido, $dadosClient)
+    private function preparaDadosPag(array $pedido, array $dadosClient)
     {
+        $amount = (float) $pedido['valor_total'];
+
         $venc = $pedido['vencimento'];
-        $vencFomtt = str_replace('-', '', $venc);
+        $mes = date('m', strtotime($venc));
+        $ano2 = date('y', strtotime($venc));
+        $expiration = $mes . $ano2;
+
+
+        $customer = [
+            'external_id' => (string) $dadosClient['external_id'],
+            'name' => (string) $dadosClient['name'],
+            'type' => (string) $dadosClient['type'],
+            'email' => (string) $dadosClient['email'],
+            'documents' => [
+                [
+                    'type' => (string) $dadosClient['documents']['type'],
+                    'number' => (string) $dadosClient['documents']['number'],
+                ]
+            ],
+            'birthday' => (string) $dadosClient['birthday'],
+        ];
 
         return [
-            'external_order_id' => $pedido['id'],
-            'amount' => (float) $pedido['valor_total'],
-            'card_number' => $pedido['num_cartao'],
+            'external_order_id' => (int) $pedido['id'],
+            'amount' => (float) $amount,
+            'card_number' => (string) $pedido['num_cartao'],
             'card_cvv' => (string) $pedido['codigo_verificacao'],
-            'card_expiration_date' => $vencFomtt,
-            'card_holder_name' => $pedido['nome_portador'],
-            'customer' => $dadosClient
+            'card_expiration_date' => (string) $expiration,
+            'card_holder_name' => (string) $pedido['nome_portador'],
+            'customer' => $customer,
         ];
     }
 
@@ -149,10 +168,8 @@ class ProcessoPagamentoController extends BaseController
 
     private function processaTransacao($dados)
     {
-
         try {
-            $dadosP = $this->request->getJSON(true);
-            if (empty($dadosP)) {
+            if (empty($dados)) {
                 return [
                     'status' => 401,
                     'data' => [
@@ -162,7 +179,8 @@ class ProcessoPagamentoController extends BaseController
                     ]
                 ];
             }
-            $validate = $this->validaDados($dadosP);
+
+            $validate = $this->validaDados($dados);
             if ($validate !== true) {
                 return [
                     'status' => 400,
@@ -170,15 +188,14 @@ class ProcessoPagamentoController extends BaseController
                 ];
             }
 
-            $result = $this->pagCompletoGateway->processaTransacao($dadosP);
+            $result = $this->pagCompletoGateway->processaTransacao($dados);
 
             return [
                 'status' => 200,
                 'data' => [
-                    'Error' => $result['error'] ?? false,
-                    'Transaction_code' => $result['transaction_code'] ?? '00',
-                    'Message' => $result['error'] ?
-                        ($result['message'] ?? 'Erro no processamento') : 'Pagamento Aprovado'
+                    'Error' => $result['Error'] ?? $result['error'] ?? true,
+                    'Transaction_code' => $result['Transaction_code'] ?? $result['code'] ?? '99',
+                    'Message' => $result['message'] ?? 'Erro desconhecido',
                 ]
             ];
         } catch (\Exception $e) {
@@ -193,7 +210,6 @@ class ProcessoPagamentoController extends BaseController
                 ]
             ];
         }
-
     }
 
     private function validaDados($dados)

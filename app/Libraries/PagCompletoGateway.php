@@ -17,69 +17,61 @@ class PagCompletoGateway
 
     public function __construct()
     {
-        $this->baseURL = 'https://apiinterna.ecompleto.com.br/exams/transaction';
-        $this->endpoint = '/exams/processTransaction';
-        $this->accessToken = env('PAGCOMPLETO_ACCESS_TOKEN', 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjI2ODQsInN0b3JlSWQiOjE5NzksImlhdCI6MTc0ODU0NTIwNiwiZXhwIjoxNzQ5NDA5MjA2fQ.pngOSO40bI67Q1bCwWc_SFdIuBRhDQKww2DyxfhTKqo');
+        $this->baseURL='https://apiinterna.ecompleto.com.br/exams/processTransaction';
+        $this->endpoint='/exams/processTransaction';
+        $this->accessToken=env('PAGCOMPLETO_ACCESS_TOKEN', 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjI2ODQsInN0b3JlSWQiOjE5NzksImlhdCI6MTc0ODU0NTIwNiwiZXhwIjoxNzQ5NDA5MjA2fQ.pngOSO40bI67Q1bCwWc_SFdIuBRhDQKww2DyxfhTKqo');
+       
+
         $this->timeout = 30;
     }
 
 
     public function transacao(array $dadosPagamento)
     {
-        try {
+        $url = $this->baseURL . '?accessToken=' . $this->accessToken;
+        
 
-            $url = $this->baseURL . $this->endpoint . '?accesstoken=' . $this->accessToken;
+        $jsonPayload = json_encode($dadosPagamento, JSON_UNESCAPED_UNICODE);
+        
 
-            $curl = curl_init();
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => $this->timeout,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => $jsonPayload,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Accept: application/json'
+            ],
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2
+        ]);
 
-            curl_setopt_array($curl, [
-                CURLOPT_URL => $url,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => $this->timeout,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => json_encode($dadosPagamento),
-                CURLOPT_HTTPHEADER => [
-                    'content-Type: application/json',
-                    'Accept: application/json'
-                ],
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_SSL_VERIFYHOST => 2
-            ]);
+        $response = curl_exec($curl);
+        $http = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $error = curl_error($curl);
+        curl_close($curl);
 
-
-            $response = curl_exec($curl);
-            $http = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            $error = curl_error($curl);
-
-            curl_close($curl);
-
-            if ($error) {
-                throw new \Exception("Erro: " . $error);
-            }
-
-            if ($http != 200) {
-                throw new \Exception("Gateway retorno: " . $http);
-            }
-
-            $retorno = json_decode($response, true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception("Erro na resposta do gateway: " . json_last_error_msg());
-            }
-
-            $this->logTransacao($dadosPagamento, $retorno);
-
-            return $retorno;
-        } catch (\Exception $e) {
-            log_message('error', 'Erro PagCompletoGateway:' . $e->getMessage());
-
-            return [
-                'Error' => true,
-                'Transaction_code' => '99',
-                'Message' => 'Erro na comunicacao: ' . $e->getMessage()
-            ];
+        if ($error) {
+            throw new \Exception("Erro cURL: " . $error);
         }
+
+        if ($http !== 200) {
+            echo "[PagCompletoGateway] HTTP $http retornado. Resposta: $response\n";
+            throw new \Exception("Gateway retornou HTTP $http");
+        }
+
+        $retorno = json_decode($response, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \Exception("JSON inválido: " . json_last_error_msg());
+        }
+
+        $this->logTransacao($dadosPagamento, $retorno);
+        return $retorno;
     }
+
 
     //comentada por ser desnecessária
     /*private function validateDadosTr(array $dados){
