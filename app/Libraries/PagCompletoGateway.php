@@ -17,7 +17,7 @@ class PagCompletoGateway
 
     public function __construct()
     {
-        $this->baseURL = 'https://apiinterna.ecompleto.com.br';
+        $this->baseURL = 'https://apiinterna.ecompleto.com.br/exams/transaction';
         $this->endpoint = '/exams/processTransaction';
         $this->accessToken = env('PAGCOMPLETO_ACCESS_TOKEN', 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjI2ODQsInN0b3JlSWQiOjE5NzksImlhdCI6MTc0ODU0NTIwNiwiZXhwIjoxNzQ5NDA5MjA2fQ.pngOSO40bI67Q1bCwWc_SFdIuBRhDQKww2DyxfhTKqo');
         $this->timeout = 30;
@@ -27,7 +27,6 @@ class PagCompletoGateway
     public function transacao(array $dadosPagamento)
     {
         try {
-            $this->validateDadosTr($dadosPagamento);
 
             $url = $this->baseURL . $this->endpoint . '?accesstoken=' . $this->accessToken;
 
@@ -82,9 +81,8 @@ class PagCompletoGateway
         }
     }
 
-
-    private function validateDadosTr(array $dados)
-    {
+    //comentada por ser desnecessária
+    /*private function validateDadosTr(array $dados){
         $obg = [
             'external_order_id',
             'amount',
@@ -124,10 +122,9 @@ class PagCompletoGateway
 
 
 
-    }
+    }*/
 
-    private function validateNum($num)
-    {
+    /*private function validateNum($num){
 
         $num = preg_replace('/\D/', '', (string) $num);
         error_log("Número recebido: " . var_export($num, true));
@@ -155,7 +152,7 @@ class PagCompletoGateway
         }
 
         return ($sum % 10) === 0;
-    }
+    }*/
 
     private function logTransacao(array $dados, array $retorno)
     {
@@ -194,7 +191,7 @@ class PagCompletoGateway
 
         try {
             $hj = new \DateTime();
-            $venc = new \DateTime($ano . '-' . str_pad($mes, 2, '0', STR_PAD_LEFT) . '-01');
+            $venc = new \DateTime($ano . str_pad($mes, 2, '0', STR_PAD_LEFT) . '-01');
             $venc->modify('last day of this month');
 
             return $venc >= $hj;
@@ -207,24 +204,15 @@ class PagCompletoGateway
     public function processaTransacao(array $dados)
     {
 
-        $Obg = [
-            'external_order_id',
-            'amount',
-            'card_number',
-            'card_cvv',
-            'card_expiration_date',
-            'card_holder_name',
-            'customer'
-        ];
-
-        try {
+        /*try {
             $this->validateDadosTr($dados);
         } catch (\Exception $e) {
             return [
                 'error' => true,
                 'message' => 'Validação falha: ' . $e->getMessage()
             ];
-        }
+        }*/
+
 
         try {
             $retornoRaw = $this->transacao($dados);

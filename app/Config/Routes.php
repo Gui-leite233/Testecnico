@@ -10,4 +10,3 @@ use App\Controllers\ProcessoPagamentoController;
 
 
 $routes->post('exams/processTransaction', 'ProcessoPagamentoController::index');
-$routes->post('processopagamento', 'ProcessoPagamentoController::index');

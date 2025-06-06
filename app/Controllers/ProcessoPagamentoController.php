@@ -27,7 +27,7 @@ class ProcessoPagamentoController extends BaseController
 
     public function index()
     {
-        log_message('debug', '>> Entrou em ProcessoPagamentoController::index');
+
         try {
             $dadosPost = $this->request->getJSON(true);
 
@@ -149,17 +149,6 @@ class ProcessoPagamentoController extends BaseController
 
     private function processaTransacao($dados)
     {
-        //valida método
-        if ($this->request->getMethod() !== 'POST') {
-            return [
-                'status' => 405,
-                'data' => [
-                    'Error' => true,
-                    'Transaction_code' => '99',
-                    'Message' => 'Método não permitido'
-                ]
-            ];
-        }
 
         try {
             $dadosP = $this->request->getJSON(true);
@@ -204,8 +193,6 @@ class ProcessoPagamentoController extends BaseController
                 ]
             ];
         }
-
-
 
     }
 

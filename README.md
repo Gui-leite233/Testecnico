@@ -1,68 +1,96 @@
-# CodeIgniter 4 Application Starter
+# Teste Técnico da E-completo
 
-## What is CodeIgniter?
+## Instalação e instruções para rodar
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+### Ambiente
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+- Mude o nome do "env.example" para ".env"
+- Descomente as linhas:
+  "# CI_ENVIRONMENT = production" e mude de production para development
+  e as linhas
+  "# app.baseURL = ''" ou "# app_baseURL = ''"
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+- Após isso rode no terminal:
+  docker compose up -d
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+isso irá rodar instalar todo o banco de dados e criar um perfil
 
-## Installation & updates
+- então altere os dados de:
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+# database.default.hostname = localhost
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+# database.default.database = ci4
 
-## Setup
+# database.default.username = root
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+# database.default.password = root
 
-## Important Change with index.php
+# database.default.DBDriver = MySQLi
 
-`index.php` is no longer in the root of the project! It has been moved inside the *public* folder,
-for better security and separation of components.
+# database.default.DBPrefix =
 
-This means that you should configure your web server to "point" to your project's *public* folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter *public/...*, as the rest of your logic and the
-framework are exposed.
+# database.default.port = 3306
 
-**Please** read the user guide for a better explanation of how CI4 works!
+para:
+database.default.hostname = localhost
+database.default.database = ci4_app
+database.default.username = ci4_user
+database.default.password = ci4_pass
+database.default.DBDriver = Postgre
+database.default.port = 5432
+database.default.charset = UTF8
 
-## Repository Management
+(descomentados)
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+- então vá no pgAdmin e para login use:
+  email: admin@admin.com
+  senha: admin123
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+- após isso crie um server, com as mesmas informações que estão no env com a diferença é que o localhost no postgre se chama db, então:
+  hostname = db
+  database = ci4_app
+  username = ci4_user
+  password = ci4_pass
+  port = 5432
 
-## Server Requirements
+-Após a conexão, deverá rodar as migrações, eu fiz uma migração que migra e utilizar das seeders para popular o banco, então no terminal:
+php spark migrate para as migrações
+e
+php spark db:seed
+Database
 
-PHP version 8.1 or higher is required, with the following extensions installed:
+e assim o banco está pronto.
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
+Após isso no terminal rode php spark serve
+provavelmente irá rodar na localhost:8082
 
-> [!WARNING]
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - If you are still using PHP 7.4 or 8.0, you should upgrade immediately.
-> - The end of life date for PHP 8.1 will be December 31, 2025.
+então para testar:
 
-Additionally, make sure that the following extensions are enabled in your PHP:
+- no Insomnia ou Postman, ou qualquer outra forma de fazer a requisição POST
 
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+na url utilize: POST localhost:8082/exams/processTransaction
+
+como parâmetro terá: "accessToken: TOKEN_FORNECIDO"
+
+assim na requisição utilize o JSON e para isso ficará como o documento fornecido:
+{
+"external_order_id": 932832,
+"amount": 21.40,
+"card_number": "4111111111111111",
+"card_cvv": "123",
+"card_expiration_date": "0922",
+"card_holder_name": "Morpheus Fishburne",
+"customer": {
+"external_id": "3311",
+"name": "Morpheus Fishburne",
+"type": "individual",
+"email": "mopheus@nabucodonozor.com",
+"documents": [
+{
+"type": "cpf",
+"number": "30621143049"
+}
+],
+"birthday": "1965-01-01"
+}
+}
