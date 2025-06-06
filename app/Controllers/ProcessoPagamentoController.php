@@ -149,23 +149,24 @@ class ProcessoPagamentoController extends BaseController
 
     private function processaTransacao($dados)
     {
-        if ($this->response->getMethod() !== 'POST') {
+        //valida método
+        if ($this->request->getMethod() !== 'POST') {
             return $this->response->setStatusCode(405)->setJSON([
-                'Error'=>true,
-                'Transaction_code'=>'99',
-                'Message'=>'Método não permitido'
+                'Error' => true,
+                'Transaction_code' => '99',
+                'Message' => 'Método não permitido'
             ]);
         }
 
 
 
-
+        //valida token
         $token = $this->request->getGet('accessToken');
         if (empty($token)) {
             return $this->response->setStatusCode(401)->setJSON([
-                'Error'=>true,
-                'Transaction_code'=>'99',
-                'Message'=>'Token de acesso inválido ou inexistente'
+                'Error' => true,
+                'Transaction_code' => '99',
+                'Message' => 'Token de acesso inválido ou inexistente'
             ]);
         }
 
@@ -173,36 +174,37 @@ class ProcessoPagamentoController extends BaseController
             $dadosP = $this->request->getJSON(true);
             if (empty($dadosP)) {
                 return $this->response->setStatusCode(401)->setJSON([
-                    'Error'=>true,
-                    'Transaction_code'=>'99',
-                    'Message'=>'Dados não fornecidos'
+                    'Error' => true,
+                    'Transaction_code' => '99',
+                    'Message' => 'Dados não fornecidos'
                 ]);
             }
             $validate = $this->validaDados($dadosP);
-            if ($validate!==true) {
+            if ($validate !== true) {
                 return $this->response->setStatusCode(400)->setJSON($validate);
             }
 
             $result = $this->pagCompletoGateway->processaTransacao($dadosP);
 
             return $this->response->setJSON([
-                'Error'=>$result['error'] ?? false,
-                'Transaction_code'=>$result['transaction_code']?? '00',
-                'Message' => $result['error'] ? 
+                'Error' => $result['error'] ?? false,
+                'Transaction_code' => $result['transaction_code'] ?? '00',
+                'Message' => $result['error'] ?
                     ($result['message'] ?? 'Erro no processamento') : 'Pagamento Aprovado'
             ]);
         } catch (\Exception $e) {
             log_message('error', 'Erro no processamento: ' . $e->getMessage());
 
             return $this->response->setStatusCode(500)->setJSON([
-                'Error'=>true,
-                'Transaction_code'=>'99',
-                'Message'=>'Erro interno'
+                'Error' => true,
+                'Transaction_code' => '99',
+                'Message' => 'Erro interno'
             ]);
         }
     }
 
-    private function validaDados($dados) {
+    private function validaDados($dados)
+    {
         $Obg = [
             'external_order_id',
             'amount',
@@ -214,23 +216,23 @@ class ProcessoPagamentoController extends BaseController
         ];
 
         foreach ($Obg as $campo) {
-            if(!isset($dados[$campo])){
+            if (!isset($dados[$campo])) {
                 return [
-                    'Error'=>true,
-                    'Transaction_code'=>'99',
-                    'Message'=>"Campo obrigatório: $campo"
+                    'Error' => true,
+                    'Transaction_code' => '99',
+                    'Message' => "Campo obrigatório: $campo"
                 ];
             }
         }
 
 
-        if(!isset($dados['customer']['external_id']) || $dados['customer']['nome'] || $dados['customer']['email'] || $dados['customer']['documents']){
+        if (!isset($dados['customer']['external_id']) || !isset($dados['customer']['name']) || !isset($dados['customer']['email']) || !isset($dados['customer']['documents'])) {
             return [
-                'Error'=>true,
-                'Transaction_code'=>'99',
-                'Message'=>'Dados incompletos'
+                'Error' => true,
+                'Transaction_code' => '99',
+                'Message' => 'Dados incompletos'
             ];
-            
+
         }
         return true;
     }

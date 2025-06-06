@@ -9,4 +9,4 @@ use App\Controllers\ProcessoPagamentoController;
 
 
 
-$routes->post('exams/processTransaction', 'ProcessoPagamentoController::processTransaction');
+$routes->post('exams/processTransaction', ['ProcessoPagamentoController', 'processTransaction']);
