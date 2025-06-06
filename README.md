@@ -56,6 +56,7 @@ database.default.password = ci4_pass
 database.default.DBDriver = Postgre
 database.default.port = 5432
 database.default.charset = UTF8
+PAGCOMPLETO_ACCESS_TOKEN=SEU-TOKEN
 ```
 
 > Lembre-se de descomentar todas as linhas acima.
