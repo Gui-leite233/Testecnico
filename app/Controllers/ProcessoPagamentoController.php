@@ -27,7 +27,7 @@ class ProcessoPagamentoController extends BaseController
 
     public function index()
     {
-
+        log_message('debug', '>> Entrou em ProcessoPagamentoController::index');
         try {
             $dadosPost = $this->request->getJSON(true);
 
@@ -40,7 +40,7 @@ class ProcessoPagamentoController extends BaseController
 
             $resultado = $this->processaTransacao($dadosPost);
 
-            return $this->response->setJSON($resultado);
+            return $this->response->setStatusCode($resultado['status'])->setJSON($resultado['data']);
 
         } catch (\Exception $e) {
             log_message('error', 'Erro no processamento: ' . $e->getMessage());
@@ -151,56 +151,62 @@ class ProcessoPagamentoController extends BaseController
     {
         //valida método
         if ($this->request->getMethod() !== 'POST') {
-            return $this->response->setStatusCode(405)->setJSON([
-                'Error' => true,
-                'Transaction_code' => '99',
-                'Message' => 'Método não permitido'
-            ]);
-        }
-
-
-
-        //valida token
-        $token = $this->request->getGet('accessToken');
-        if (empty($token)) {
-            return $this->response->setStatusCode(401)->setJSON([
-                'Error' => true,
-                'Transaction_code' => '99',
-                'Message' => 'Token de acesso inválido ou inexistente'
-            ]);
+            return [
+                'status' => 405,
+                'data' => [
+                    'Error' => true,
+                    'Transaction_code' => '99',
+                    'Message' => 'Método não permitido'
+                ]
+            ];
         }
 
         try {
             $dadosP = $this->request->getJSON(true);
             if (empty($dadosP)) {
-                return $this->response->setStatusCode(401)->setJSON([
-                    'Error' => true,
-                    'Transaction_code' => '99',
-                    'Message' => 'Dados não fornecidos'
-                ]);
+                return [
+                    'status' => 401,
+                    'data' => [
+                        'Error' => true,
+                        'Transaction_code' => '99',
+                        'Message' => 'Dados não fornecidos'
+                    ]
+                ];
             }
             $validate = $this->validaDados($dadosP);
             if ($validate !== true) {
-                return $this->response->setStatusCode(400)->setJSON($validate);
+                return [
+                    'status' => 400,
+                    'data' => $validate
+                ];
             }
 
             $result = $this->pagCompletoGateway->processaTransacao($dadosP);
 
-            return $this->response->setJSON([
-                'Error' => $result['error'] ?? false,
-                'Transaction_code' => $result['transaction_code'] ?? '00',
-                'Message' => $result['error'] ?
-                    ($result['message'] ?? 'Erro no processamento') : 'Pagamento Aprovado'
-            ]);
+            return [
+                'status' => 200,
+                'data' => [
+                    'Error' => $result['error'] ?? false,
+                    'Transaction_code' => $result['transaction_code'] ?? '00',
+                    'Message' => $result['error'] ?
+                        ($result['message'] ?? 'Erro no processamento') : 'Pagamento Aprovado'
+                ]
+            ];
         } catch (\Exception $e) {
             log_message('error', 'Erro no processamento: ' . $e->getMessage());
 
-            return $this->response->setStatusCode(500)->setJSON([
-                'Error' => true,
-                'Transaction_code' => '99',
-                'Message' => 'Erro interno'
-            ]);
+            return [
+                'status' => 500,
+                'data' => [
+                    'Error' => true,
+                    'Transaction_code' => '99',
+                    'Message' => 'Erro interno'
+                ]
+            ];
         }
+
+
+
     }
 
     private function validaDados($dados)

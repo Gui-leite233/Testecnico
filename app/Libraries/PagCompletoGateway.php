@@ -101,7 +101,7 @@ class PagCompletoGateway
             }
         }
 
-        if (!isset($dados['customer']['external_id']) || !isset($dados['customer']['name']) || !isset($dados['customer']['email']) || !isset($dados['customer']['document'])) {
+        if (!isset($dados['customer']['external_id']) || !isset($dados['customer']['name']) || !isset($dados['customer']['email']) || !isset($dados['customer']['documents'])) {
             throw new \Exception("dados incompletos");
 
         }
@@ -176,29 +176,33 @@ class PagCompletoGateway
     {
         $dados = preg_replace('/\D/', '', $dados);
 
-
         if (strlen($dados) !== 4 && strlen($dados) !== 6) {
             return false;
         }
 
         if (strlen($dados) == 4) {
-            $mes = (int) substr($dados, 0, 2);//MM
-            $ano = (int) ('20' . substr($dados, 2, 2));//YY
+            $mes = (int) substr($dados, 0, 2); // MM
+            $ano = (int) ('20' . substr($dados, 2, 2)); // YY
         } else {
-            $mes = (int) substr($dados, 0, 2);//MM
-            $ano = (int) substr($dados, 2, 4);//YYYY
+            $mes = (int) substr($dados, 0, 2); // MM
+            $ano = (int) substr($dados, 2, 4); // YYYY
         }
 
         if ($mes < 1 || $mes > 12) {
             return false;
         }
 
-        $hj = new \DateTime();
-        $venc = new \DateTime($ano . '-' . str_pad($mes, 2, '0', STR_PAD_LEFT) . '-01');
-        $venc->modify('ultimo dia');
+        try {
+            $hj = new \DateTime();
+            $venc = new \DateTime($ano . '-' . str_pad($mes, 2, '0', STR_PAD_LEFT) . '-01');
+            $venc->modify('last day of this month');
 
-        return $venc >= $hj;
+            return $venc >= $hj;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
+
 
     public function processaTransacao(array $dados)
     {
@@ -241,11 +245,11 @@ class PagCompletoGateway
 
         if (isset($retornoRaw['Transaction_code']) && $retornoRaw['Transaction_code'] === '00') {
             return [
-                'error' => false,
-                'transaction_code' => $retornoRaw['Transaction_code'],
+                'Error' => false,
+                'Transaction_code' => $retornoRaw['Transaction_code'],
                 'authorization_code' => $retornoRaw['authorization_code'] ?? null,
                 'payment_id' => $retornoRaw['payment_id'] ?? null,
-                'staus' => 'approved'
+                'status' => 'approved'
             ];
         }
 
