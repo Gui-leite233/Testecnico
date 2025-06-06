@@ -29,24 +29,26 @@ class ProcessoPagamentoController extends BaseController
     {
 
         try {
-            $pedidoProcesso = $this->buscaPedido();
+            $dadosPost = $this->request->getJSON(true);
 
-            $result = [];
+            if (empty($dadosPost)) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'Error' => true,
+                    'Message' => 'Dados não fornecidos'
+                ]);
+            }
 
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Processamento concluido',
-                'pedidos_processamento' => count($result),
-                'resultados' => $result
-            ]);
+            $resultado = $this->processaTransacao($dadosPost);
+
+            return $this->response->setJSON($resultado);
 
         } catch (\Exception $e) {
             log_message('error', 'Erro no processamento: ' . $e->getMessage());
 
             return $this->response->setStatusCode(500)->setJSON([
-                'success' => false,
-                'message' => 'Erro interno',
-                'error' => $e->getMessage()
+                'Error' => true,
+                'Transaction_code' => '99',
+                'Message' => 'Erro interno do servidor'
             ]);
         }
     }
@@ -55,9 +57,9 @@ class ProcessoPagamentoController extends BaseController
     private function buscaPedido()
     {
         $builder = $this->pedidosModel->db->table('pedidos p');
-        $builder->select('p.*, pp.*, c.nome as cliente_nome, c.cpf_cnpj, c.email, c.data_nasc')->join('pedidos_pagamentos pp', 'p.id = pp.id_pedido')->join('lojas_gateway lg', 'p.id_loja=pp.id_pedido')->join('clientes c', 'p.id_cliente=c.id')->where('lg.id_gateway', 1)->where('pp.id_formatopagto', 3)->where('p.id_situacao', 1)->where('pp.retorno_intermediador IS NULL');
+        $builder->select('p.*, pp.*, c.nome as cliente_nome, c.cpf_cnpj, c.email, c.data_nasc')->join('pedidos_pagamentos pp', 'p.id = pp.id_pedido')->join('lojas_gateway lg', 'p.id_loja = lg.id_loja')->join('clientes c', 'p.id_cliente=c.id')->where('lg.id_gateway', 1)->where('pp.id_formatopagto', 3)->where('p.id_situacao', 1)->where('pp.retorno_intermediador IS NULL');
 
-        return $builder->get()->getResult();
+        return $builder->get()->getResultArray();
     }
 
 
@@ -76,7 +78,7 @@ class ProcessoPagamentoController extends BaseController
                 'retorno_gateway' => $retornoGwy
             ];
         } catch (\Exception $e) {
-            log_message('error', "Erro ao processar pedido {$pedido['id']}: " . $e->getMessage());
+            //log_message('info', "Erro ao processar pedido {$pedido['id']}: " . $e->getMessage());
 
             return [
                 'pedido_id' => $pedido['id'],
@@ -90,11 +92,11 @@ class ProcessoPagamentoController extends BaseController
     private function preparaDados($pedido)
     {
         return [
-            'exeternal_id' => (string) $pedido['id_cliente'],
+            'external_id' => (string) $pedido['id_cliente'],
             'name' => $pedido['cliente_nome'],
             'type' => 'individual',
             'email' => $pedido['email'],
-            'document' => [
+            'documents' => [
                 'type' => 'cpf',
                 'number' => $pedido['cpf_cnpj']
             ],
@@ -111,8 +113,8 @@ class ProcessoPagamentoController extends BaseController
         return [
             'external_order_id' => $pedido['id'],
             'amount' => (float) $pedido['valor_total'],
-            'card_numer' => $pedido['num_cartao'],
-            'card_cvv' => (string) $pedido['codigo_verificador'],
+            'card_number' => $pedido['num_cartao'],
+            'card_cvv' => (string) $pedido['codigo_verificacao'],
             'card_expiration_date' => $vencFomtt,
             'card_holder_name' => $pedido['nome_portador'],
             'customer' => $dadosClient
@@ -123,7 +125,7 @@ class ProcessoPagamentoController extends BaseController
     {
         $novoStatus = 1;
 
-        if (isset($retornoGateway['error']) && $retornoGateway['Error'] == false) {
+        if (isset($retornoGateway['info']) && $retornoGateway['Error'] == false) {
             if (isset($retornoGateway['Transaction_code']) && $retornoGateway['Transaction_code'] == 00) {
                 $novoStatus = 2;//deu boa
             }
@@ -142,55 +144,95 @@ class ProcessoPagamentoController extends BaseController
 
         $builder = $this->pedpagModel->db->table('pedidos_pagamentos');
         $builder->where('id_pedido', $pedido);
-        $builder->update(['update_intermediador' => $retornoJson, 'data_processamento' => $ProcessDate]);
+        $builder->update(['retorno_intermediador' => $retornoJson, 'data_processamento' => $ProcessDate]);
     }
 
-    private function processaTransacao($dadosPag, $pagCompletoGateway)
+    private function processaTransacao($dados)
     {
-        if (!isset($dadosPag['external_order_id'], $dadosPag['amount'], $dadosPag['card_number'], $dadosPag['card_cvv'], $dadosPag['card_expiration_date'], $dadosPag['card_holder_name'], $dadosPag['customer'])) {
-            return [
-                'error' => true,
-                'message' => 'Dados incompletos'
-            ];
+        if ($this->response->getMethod() !== 'POST') {
+            return $this->response->setStatusCode(405)->setJSON([
+                'Error'=>true,
+                'Transaction_code'=>'99',
+                'Message'=>'Método não permitido'
+            ]);
+        }
+
+
+
+
+        $token = $this->request->getGet('accessToken');
+        if (empty($token)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'Error'=>true,
+                'Transaction_code'=>'99',
+                'Message'=>'Token de acesso inválido ou inexistente'
+            ]);
         }
 
         try {
-            $retornoGateway = $this->pagCompletoGateway->processaTransacao($dadosPag);
-
-            if (isset($retornoGateway['error']) && $retornoGateway['error'] === true) {
-                return [
-                    'error' => true,
-                    'message' => $retornoGateway['message'] ?? 'Erro no gateway'
-                ];
+            $dadosP = $this->request->getJSON(true);
+            if (empty($dadosP)) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'Error'=>true,
+                    'Transaction_code'=>'99',
+                    'Message'=>'Dados não fornecidos'
+                ]);
+            }
+            $validate = $this->validaDados($dadosP);
+            if ($validate!==true) {
+                return $this->response->setStatusCode(400)->setJSON($validate);
             }
 
+            $result = $this->pagCompletoGateway->processaTransacao($dadosP);
 
-            if (
-                isset($retornoGateway['transaction_code']) &&
-                $retornoGateway['transaction_code'] === '00'
-            ) {
-
-                return [
-                    'error' => false,
-                    'transaction_code' => $retornoGateway['transaction_code'],
-                    'authorization_code' => $retornoGateway['authorization_code'] ?? null,
-                    'payment_id' => $retornoGateway['payment_id'] ?? null,
-                    'status' => 'approved'
-                ];
-            } else {
-                return [
-                    'error' => true,
-                    'code' => $retornoGateway['transaction_code'] ?? 'unknown',
-                    'message' => $retornoGateway['error_message'] ?? 'Pagamento recusado'
-                ];
-            }
+            return $this->response->setJSON([
+                'Error'=>$result['error'] ?? false,
+                'Transaction_code'=>$result['transaction_code']?? '00',
+                'Message' => $result['error'] ? 
+                    ($result['message'] ?? 'Erro no processamento') : 'Pagamento Aprovado'
+            ]);
         } catch (\Exception $e) {
-            return [
-                'error' => true,
-                'message' => 'Falha ao comunicar com o gateway',
-                'details' => $e->getMessage()
-            ];
+            log_message('error', 'Erro no processamento: ' . $e->getMessage());
+
+            return $this->response->setStatusCode(500)->setJSON([
+                'Error'=>true,
+                'Transaction_code'=>'99',
+                'Message'=>'Erro interno'
+            ]);
         }
+    }
+
+    private function validaDados($dados) {
+        $Obg = [
+            'external_order_id',
+            'amount',
+            'card_number',
+            'card_cvv',
+            'card_expiration_date',
+            'card_holder_name',
+            'customer'
+        ];
+
+        foreach ($Obg as $campo) {
+            if(!isset($dados[$campo])){
+                return [
+                    'Error'=>true,
+                    'Transaction_code'=>'99',
+                    'Message'=>"Campo obrigatório: $campo"
+                ];
+            }
+        }
+
+
+        if(!isset($dados['customer']['external_id']) || $dados['customer']['nome'] || $dados['customer']['email'] || $dados['customer']['documents']){
+            return [
+                'Error'=>true,
+                'Transaction_code'=>'99',
+                'Message'=>'Dados incompletos'
+            ];
+            
+        }
+        return true;
     }
 
 

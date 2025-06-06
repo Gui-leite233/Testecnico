@@ -116,6 +116,18 @@ class SdPedPag extends Seeder
                 'nome_portador' => null,
                 'codigo_verificacao' => null,
                 'vencimento' => null
+            ],
+            [
+                'id' => 103013,
+                'id_pedido' => 98302,
+                'id_formatopagto' => 3,
+                'qtd_parcelas' => 4,
+                'retorno_intermediador' => null,
+                'data_processamento' => null,
+                'num_cartao' => '4111111111111111',
+                'nome_portador' => 'Elisa Adriana Barbosa',
+                'codigo_verificacao' => 319,
+                'vencimento' => '2027-08-01',
             ]
         ];
         $this->db->table('pedidos_pagamentos')->insertBatch($data);

@@ -40,7 +40,7 @@ class PagCompletoGateway
                 CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => json_encode($dadosPagamento),
                 CURLOPT_HTTPHEADER => [
-                    'content-Type: applications/json',
+                    'content-Type: application/json',
                     'Accept: application/json'
                 ],
                 CURLOPT_SSL_VERIFYPEER => true,
@@ -72,7 +72,7 @@ class PagCompletoGateway
 
             return $retorno;
         } catch (\Exception $e) {
-            log_message('erro', 'Erro PagCompletoGateway:' . $e->getMessage());
+            log_message('error', 'Erro PagCompletoGateway:' . $e->getMessage());
 
             return [
                 'Error' => true,
@@ -118,7 +118,7 @@ class PagCompletoGateway
             throw new \Exception("cvv invalido");
         }
 
-        if (!$this->validateDataVen($dados['card_expriration_date'])) {
+        if (!$this->validateDataVen($dados['card_expiration_date'])) {
             throw new \Exception("data de vencimento invalida");
         }
 
@@ -129,9 +129,10 @@ class PagCompletoGateway
     private function validateNum($num)
     {
 
-        $num = preg_replace('/\D/', '', $num);
+        $num = preg_replace('/\D/', '', (string) $num);
+        error_log("Número recebido: " . var_export($num, true));
 
-        if (strlen($num) || strlen($num) > 19) {
+        if (strlen($num) < 13 || strlen($num) > 19) {
             return false;
         }
 
@@ -182,7 +183,7 @@ class PagCompletoGateway
 
         if (strlen($dados) == 4) {
             $mes = (int) substr($dados, 0, 2);//MM
-            $ano = (int) ('20' . substr($dados, 2, 4));//YY
+            $ano = (int) ('20' . substr($dados, 2, 2));//YY
         } else {
             $mes = (int) substr($dados, 0, 2);//MM
             $ano = (int) substr($dados, 2, 4);//YYYY
@@ -196,16 +197,24 @@ class PagCompletoGateway
         $venc = new \DateTime($ano . '-' . str_pad($mes, 2, '0', STR_PAD_LEFT) . '-01');
         $venc->modify('ultimo dia');
 
-        return $venc;
+        return $venc >= $hj;
     }
 
-    public function processaTransacao(array $dadosPag)
+    public function processaTransacao(array $dados)
     {
 
-        $retorno = $this->transacao($dadosPag);
+        $Obg = [
+            'external_order_id',
+            'amount',
+            'card_number',
+            'card_cvv',
+            'card_expiration_date',
+            'card_holder_name',
+            'customer'
+        ];
 
         try {
-            $this->validateDadosTr($dadosPag);
+            $this->validateDadosTr($dados);
         } catch (\Exception $e) {
             return [
                 'error' => true,
@@ -214,7 +223,7 @@ class PagCompletoGateway
         }
 
         try {
-            $retornoRaw = $this->transacao($dadosPag);
+            $retornoRaw = $this->transacao($dados);
         } catch (\Exception $e) {
             return [
                 'error' => true,
