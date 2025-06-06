@@ -11,5 +11,6 @@ use App\Controllers\ProcessoPagamentoController;
 
 $routes->group('pagamentos', function($routes){
     $routes->get('processar', 'ProcessoPagamentoController::index');
+    $routes->post('processar', 'ProcessoPagamentoController::index');
 });
 

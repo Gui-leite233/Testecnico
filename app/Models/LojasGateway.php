@@ -6,7 +6,7 @@ use CodeIgniter\Model;
 
 class LojasGateway extends Model
 {
-    protected $table            = 'lojas_gateways';
+    protected $table            = 'lojas_gateway';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';

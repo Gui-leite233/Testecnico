@@ -55,7 +55,7 @@ class ProcessoPagamentoController extends BaseController
     private function buscaPedido()
     {
         $builder = $this->pedidosModel->db->table('pedidos p');
-        $builder->select('p.*, pp.*, c.nome as cliente_nome, c.cpf_cnpj, c.email, c.data_nasc')->join('pedidos_pagamentos pp', 'p.id = pp.id_pedido')->join('lojas_gateway lg', 'p.id_loja=pp.id_pedido')->join('clientes c', 'p.id_cliente=c.id')->where('ld.id_gateway', 1)->where('pp.id_formatopagto', 3)->where('p.id_situacao', 1)->where('pp.retorno_intermediador IS NULL');
+        $builder->select('p.*, pp.*, c.nome as cliente_nome, c.cpf_cnpj, c.email, c.data_nasc')->join('pedidos_pagamentos pp', 'p.id = pp.id_pedido')->join('lojas_gateway lg', 'p.id_loja=pp.id_pedido')->join('clientes c', 'p.id_cliente=c.id')->where('lg.id_gateway', 1)->where('pp.id_formatopagto', 3)->where('p.id_situacao', 1)->where('pp.retorno_intermediador IS NULL');
 
         return $builder->get()->getResult();
     }
@@ -96,7 +96,7 @@ class ProcessoPagamentoController extends BaseController
             'email' => $pedido['email'],
             'document' => [
                 'type' => 'cpf',
-                'number' => $pedido['cpf_cpnj']
+                'number' => $pedido['cpf_cnpj']
             ],
             'birthday' => $pedido['data_nasc']
         ];
@@ -164,12 +164,12 @@ class ProcessoPagamentoController extends BaseController
                 ];
             }
 
-           
+
             if (
                 isset($retornoGateway['transaction_code']) &&
                 $retornoGateway['transaction_code'] === '00'
             ) {
-                
+
                 return [
                     'error' => false,
                     'transaction_code' => $retornoGateway['transaction_code'],
@@ -193,5 +193,5 @@ class ProcessoPagamentoController extends BaseController
         }
     }
 
-     
+
 }

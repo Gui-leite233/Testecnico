@@ -7,14 +7,16 @@ use finfo;
 use PhpParser\Builder\Function_;
 use PhpParser\Node\Expr\New_;
 
-class PagCompletoGateway{
+class PagCompletoGateway
+{
     private $baseURL;
     private $endpoint;
     private $accessToken;
     private $timeout;
 
 
-    public function __construct(){
+    public function __construct()
+    {
         $this->baseURL = 'https://apiinterna.ecompleto.com.br';
         $this->endpoint = '/exams/processTransaction';
         $this->accessToken = env('PAGCOMPLETO_ACCESS_TOKEN', 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjI2ODQsInN0b3JlSWQiOjE5NzksImlhdCI6MTc0ODU0NTIwNiwiZXhwIjoxNzQ5NDA5MjA2fQ.pngOSO40bI67Q1bCwWc_SFdIuBRhDQKww2DyxfhTKqo');
@@ -22,9 +24,10 @@ class PagCompletoGateway{
     }
 
 
-    public function transacao(array $dadosPagamento){
-        try{
-            $this -> validateDadosTr($dadosPagamento);
+    public function transacao(array $dadosPagamento)
+    {
+        try {
+            $this->validateDadosTr($dadosPagamento);
 
             $url = $this->baseURL . $this->endpoint . '?accesstoken=' . $this->accessToken;
 
@@ -51,24 +54,24 @@ class PagCompletoGateway{
 
             curl_close($curl);
 
-            if($error){
+            if ($error) {
                 throw new \Exception("Erro: " . $error);
             }
 
-            if($http!=200){
+            if ($http != 200) {
                 throw new \Exception("Gateway retorno: " . $http);
             }
 
             $retorno = json_decode($response, true);
 
-            if(json_last_error()!==JSON_ERROR_NONE){
+            if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception("Erro na resposta do gateway: " . json_last_error_msg());
             }
 
             $this->logTransacao($dadosPagamento, $retorno);
 
             return $retorno;
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             log_message('erro', 'Erro PagCompletoGateway:' . $e->getMessage());
 
             return [
@@ -80,7 +83,8 @@ class PagCompletoGateway{
     }
 
 
-    private function validateDadosTr(array $dados){
+    private function validateDadosTr(array $dados)
+    {
         $obg = [
             'external_order_id',
             'amount',
@@ -91,18 +95,18 @@ class PagCompletoGateway{
             'customer'
         ];
 
-        foreach($obg as $campo){
-            if(!isset($dados[$campo]) || empty($dados[$campo])){
+        foreach ($obg as $campo) {
+            if (!isset($dados[$campo]) || empty($dados[$campo])) {
                 throw new \Exception("campo obrigatoroio: " . $campo);
             }
         }
 
-        if (!isset($dados['customer']['external_id']) || !isset($dados['customer']['name']) || !isset($dados['email']) || !isset(['customer']['documents'])) {
+        if (!isset($dados['customer']['external_id']) || !isset($dados['customer']['name']) || !isset($dados['customer']['email']) || !isset($dados['customer']['document'])) {
             throw new \Exception("dados incompletos");
-            
+
         }
 
-        if (!is_numeric($dados['amount'] || $dados['amount'] <=0)) {
+        if (!is_numeric($dados['amount']) || $dados['amount'] <= 0) {
             throw new \Exception("Valor inválido");
         }
 
@@ -114,7 +118,7 @@ class PagCompletoGateway{
             throw new \Exception("cvv invalido");
         }
 
-        if(!$this->validateDataVen($dados['card_expriration_date'])){
+        if (!$this->validateDataVen($dados['card_expriration_date'])) {
             throw new \Exception("data de vencimento invalida");
         }
 
@@ -122,11 +126,12 @@ class PagCompletoGateway{
 
     }
 
-    private function validateNum($num) {
-        
+    private function validateNum($num)
+    {
+
         $num = preg_replace('/\D/', '', $num);
 
-        if(strlen($num) || strlen($num)>19){
+        if (strlen($num) || strlen($num) > 19) {
             return false;
         }
 
@@ -135,28 +140,29 @@ class PagCompletoGateway{
 
         //algoritmo de luhn, achei o código e mudei as informações. Conceito interessante e novo.
         for ($i = strlen($num) - 1; $i >= 0; $i--) {
-            $dgt = (int)$num[$i];
-            
+            $dgt = (int) $num[$i];
+
             if ($alt) {
                 $dgt *= 2;
                 if ($dgt > 9) {
                     $dgt -= 9;
                 }
             }
-            
+
             $sum += $dgt;
             $alt = !$alt;
         }
 
-        return ($sum % 10)===0;
+        return ($sum % 10) === 0;
     }
 
-    private function logTransacao(array $dados, array $retorno){
+    private function logTransacao(array $dados, array $retorno)
+    {
         $logdata = [
-            'timestamp'=>date('Y-m-d H:i:s'),
+            'timestamp' => date('Y-m-d H:i:s'),
             'pedido_id' => $dados['external_order_id'] ?? 'N/A',
-            'valor' => $dados['amount']??'N/A',
-            'cartao_final'=>isset($dados['card_number']) ? '**** **** **** ' . substr($dados['card_number'], -4) : 'N/A',
+            'valor' => $dados['amount'] ?? 'N/A',
+            'cartao_final' => isset($dados['card_number']) ? '**** **** **** ' . substr($dados['card_number'], -4) : 'N/A',
             'status_transacao' => $retorno['Transaction_code'] ?? 'N/A',
             'mensagem' => $retorno['Message'] ?? 'N/A',
             'erro' => $retorno['Error'] ?? 'N/A'
@@ -165,23 +171,24 @@ class PagCompletoGateway{
         log_message('info', 'Transação PagCompleto: ' . json_encode($logdata));
     }
 
-    private function validateDataVen($dados){
+    private function validateDataVen($dados)
+    {
         $dados = preg_replace('/\D/', '', $dados);
 
 
-        if(strlen($dados)!==4 && strlen($dados)!==6){
+        if (strlen($dados) !== 4 && strlen($dados) !== 6) {
             return false;
         }
 
-        if(strlen($dados)==4){
+        if (strlen($dados) == 4) {
             $mes = (int) substr($dados, 0, 2);//MM
             $ano = (int) ('20' . substr($dados, 2, 4));//YY
-        } else{
-            $mes = (int)substr($dados, 0, 2);//MM
-            $ano = (int)substr($dados, 2, 4);//YYYY
+        } else {
+            $mes = (int) substr($dados, 0, 2);//MM
+            $ano = (int) substr($dados, 2, 4);//YYYY
         }
 
-        if($mes < 1 || $mes > 12){
+        if ($mes < 1 || $mes > 12) {
             return false;
         }
 
@@ -192,58 +199,61 @@ class PagCompletoGateway{
         return $venc;
     }
 
-    public function processaTransacao(array $dadosPag) {
-        
+    public function processaTransacao(array $dadosPag)
+    {
+
         $retorno = $this->transacao($dadosPag);
 
         try {
             $this->validateDadosTr($dadosPag);
         } catch (\Exception $e) {
-            return[
-                'error'=>true,
-                'message'=>'Validação falha: ' . $e->getMessage()
+            return [
+                'error' => true,
+                'message' => 'Validação falha: ' . $e->getMessage()
             ];
         }
 
         try {
             $retornoRaw = $this->transacao($dadosPag);
         } catch (\Exception $e) {
-            return[
-                'error'=>true,
-                'message'=>'exceção: ' . $e->getMessage()
+            return [
+                'error' => true,
+                'message' => 'exceção: ' . $e->getMessage()
             ];
         }
 
-        if(isset($retornoRaw['Error'])&&$retornoRaw['Error']==true){
-            return[
-                'error'=>true,
-                'code'=>$retornoRaw['Transaction_code']??'99',
-                'message'=>$retornoRaw['Message']??'Erro gateway'
+        if (isset($retornoRaw['Error']) && $retornoRaw['Error'] == true) {
+            return [
+                'error' => true,
+                'code' => $retornoRaw['Transaction_code'] ?? '99',
+                'message' => $retornoRaw['Message'] ?? 'Erro gateway'
             ];
         }
 
-        if(isset($retornoRaw['Transaction_code'])&&$retornoRaw['Transaction_code']==='00'){
-            return[
-                'error'=>false,
-                'transaction_code'=>$retornoRaw['Transaction_code'],
-                'authorization_code'=>$retornoRaw['authorization_code']??null,
-                'payment_id'=>$retornoRaw['payment_id']??null,
-                'staus'=>'approved'
+        if (isset($retornoRaw['Transaction_code']) && $retornoRaw['Transaction_code'] === '00') {
+            return [
+                'error' => false,
+                'transaction_code' => $retornoRaw['Transaction_code'],
+                'authorization_code' => $retornoRaw['authorization_code'] ?? null,
+                'payment_id' => $retornoRaw['payment_id'] ?? null,
+                'staus' => 'approved'
             ];
         }
 
-        return[
-            'error'=>true,
-            'code'=>$retornoRaw['Transaction_code']??'unknown',
-            'message'=>$retornoRaw['Message']??'recusado'
+        return [
+            'error' => true,
+            'code' => $retornoRaw['Transaction_code'] ?? 'unknown',
+            'message' => $retornoRaw['Message'] ?? 'recusado'
         ];
-        
+
     }
 
-    public function setTimeout($timeout){
-        $this->timeout = (int)$timeout;
+    public function setTimeout($timeout)
+    {
+        $this->timeout = (int) $timeout;
     }
-    public function setAccessToken($token){
+    public function setAccessToken($token)
+    {
         $this->accessToken = $token;
     }
 

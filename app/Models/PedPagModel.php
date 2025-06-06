@@ -12,7 +12,7 @@ class PedPagModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['id', 'id_pedido', 'id_formatopagto', 'qtd_parcelas', 'retorno_intermediador', 'data_processamento', 'num_cartao', 'nome_portador', 'codigo_verficacao', 'vencimento'];
+    protected $allowedFields    = ['id', 'id_pedido', 'id_formatopagto', 'qtd_parcelas', 'retorno_intermediador', 'data_processamento', 'num_cartao', 'nome_portador', 'codigo_verificacao', 'vencimento'];
 
     protected bool $allowEmptyInserts = true;
     protected bool $updateOnlyChanged = true;
