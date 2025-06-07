@@ -31,6 +31,7 @@ class ProcessoPagamentoController extends BaseController
         try {
             $dadosPost = $this->request->getJSON(true);
 
+
             if (empty($dadosPost)) {
                 return $this->response->setStatusCode(400)->setJSON([
                     'Error' => true,
@@ -40,7 +41,9 @@ class ProcessoPagamentoController extends BaseController
 
             $resultado = $this->processaTransacao($dadosPost);
 
-            return $this->response->setStatusCode($resultado['status'])->setJSON($resultado['data']);
+
+            return $this->response->setJSON($resultado);
+
 
         } catch (\Exception $e) {
             log_message('error', 'Erro no processamento: ' . $e->getMessage());
@@ -54,116 +57,61 @@ class ProcessoPagamentoController extends BaseController
     }
 
 
-    private function buscaPedido()
+    private function buscaPedido($pedido_id)
     {
-        $builder = $this->pedidosModel->db->table('pedidos p');
-        $builder->select('p.*, pp.*, c.nome as cliente_nome, c.cpf_cnpj, c.email, c.data_nasc')->join('pedidos_pagamentos pp', 'p.id = pp.id_pedido')->join('lojas_gateway lg', 'p.id_loja = lg.id_loja')->join('clientes c', 'p.id_cliente=c.id')->where('lg.id_gateway', 1)->where('pp.id_formatopagto', 3)->where('p.id_situacao', 1)->where('pp.retorno_intermediador IS NULL');
+        $builder = $this->pedpagModel->db->table('pedidos_pagamentos pp');
 
-        return $builder->get()->getResultArray();
+        $builder->select('
+        pp.id as pedido_pagamento_id,
+        p.id as pedido_id,
+        fp.id as formapagto_id,
+        ps.id as pedido_situacao_id,
+        lg.id_loja as loja_id,
+        g.id as gateway_id');
+        $builder->join('pedidos p', 'pp.id_pedido = p.id');
+        $builder->join('formas_pagamento fp', 'pp.id_formatopagto = fp.id');
+        $builder->join('pedido_situacao ps', 'p.id_situacao = ps.id');
+        $builder->join('lojas_gateway lg', 'p.id_loja = lg.id_loja');
+        $builder->join('gateways g', 'lg.id_gateway = g.id');
+        $builder->where('p.id', $pedido_id);
+        $builder->where('fp.id', 3);
+        $builder->where('ps.id', 1);
+        $builder->where('g.id', 1);
+
+        $query = $builder->get();
+        $result = $query->getResultArray();
+
+        return $result;
     }
 
 
-    private function processaPedido($pedido)
-    {
-        try {
-            $dadosClient = $this->preparaDados($pedido);
-            $dadosPag = $this->preparaDadosPag($pedido, $dadosClient);
-            $retornoGwy = $this->pagCompletoGateway->processaTransacao($dadosPag);
-            $this->atualizaStatus($pedido, $retornoGwy);
-            $this->salvaRetornoInter($pedido['id'], $retornoGwy);
-
-            return [
-                'pedido_id' => $pedido['id'],
-                'status' => 'processado',
-                'retorno_gateway' => $retornoGwy
-            ];
-        } catch (\Exception $e) {
-            //log_message('info', "Erro ao processar pedido {$pedido['id']}: " . $e->getMessage());
-
-            return [
-                'pedido_id' => $pedido['id'],
-                'status' => 'erro',
-                'erro' => $e->getMessage()
-            ];
-        }
-    }
 
 
-    private function preparaDados($pedido)
-    {
-        return [
-            'external_id' => (string) $pedido['id_cliente'],
-            'name' => $pedido['cliente_nome'],
-            'type' => 'individual',
-            'email' => $pedido['email'],
-            'documents' => [
-                'type' => 'cpf',
-                'number' => $pedido['cpf_cnpj']
-            ],
-            'birthday' => $pedido['data_nasc']
-        ];
-    }
 
 
-    private function preparaDadosPag(array $pedido, array $dadosClient)
-    {
-        $amount = (float) $pedido['valor_total'];
 
-        $venc = $pedido['vencimento'];
-        $mes = date('m', strtotime($venc));
-        $ano2 = date('y', strtotime($venc));
-        $expiration = $mes . $ano2;
-
-
-        $customer = [
-            'external_id' => (string) $dadosClient['external_id'],
-            'name' => (string) $dadosClient['name'],
-            'type' => (string) $dadosClient['type'],
-            'email' => (string) $dadosClient['email'],
-            'documents' => [
-                [
-                    'type' => (string) $dadosClient['documents']['type'],
-                    'number' => (string) $dadosClient['documents']['number'],
-                ]
-            ],
-            'birthday' => (string) $dadosClient['birthday'],
-        ];
-
-        return [
-            'external_order_id' => (int) $pedido['id'],
-            'amount' => (float) $amount,
-            'card_number' => (string) $pedido['num_cartao'],
-            'card_cvv' => (string) $pedido['codigo_verificacao'],
-            'card_expiration_date' => (string) $expiration,
-            'card_holder_name' => (string) $pedido['nome_portador'],
-            'customer' => $customer,
-        ];
-    }
 
     private function atualizaStatus($pedido, $retornoGateway)
     {
-        $novoStatus = 1;
 
-        if (isset($retornoGateway['info']) && $retornoGateway['Error'] == false) {
-            if (isset($retornoGateway['Transaction_code']) && $retornoGateway['Transaction_code'] == 00) {
-                $novoStatus = 2;//deu boa
-            }
-        } else {
-            $novoStatus = 3;//deu ruim
+
+        switch ($retornoGateway['Transaction_code']) {
+            case 00:
+                $builder = $this->pedpagModel->db->table('pedidos_pagamentos');
+                $builder->where('id_pedido', $pedido);
+                $builder->update(['retorno_intermediador' => 2]);
+                break;
+            case 03:
+            case 04:
+                $builder = $this->pedpagModel->db->table('pedidos_pagamentos');
+                $builder->where('id_pedido', $pedido);
+                $builder->update(['retorno_intermediador' => 3]);
+                break;
+
+
         }
 
-        $this->pedidosModel->update($pedido['id'], ['id_situacao' => $novoStatus]);
-    }
 
-
-    private function salvaRetornoInter($pedido, $retornoGateway)
-    {
-        $retornoJson = json_encode($retornoGateway);
-        $ProcessDate = date('Y-m-d H:i:s');
-
-        $builder = $this->pedpagModel->db->table('pedidos_pagamentos');
-        $builder->where('id_pedido', $pedido);
-        $builder->update(['retorno_intermediador' => $retornoJson, 'data_processamento' => $ProcessDate]);
     }
 
     private function processaTransacao($dados)
@@ -187,17 +135,14 @@ class ProcessoPagamentoController extends BaseController
                     'data' => $validate
                 ];
             }
+            $dbData = $this->buscaPedido($dados['external_order_id']);
+            if (count($dbData) > 0) {
+                $result = $this->pagCompletoGateway->transacao($dados);
+                $this->atualizaStatus($dados['external_order_id'], $result);
+                return $result;
+            }
 
-            $result = $this->pagCompletoGateway->processaTransacao($dados);
 
-            return [
-                'status' => 200,
-                'data' => [
-                    'Error' => $result['Error'] ?? $result['error'] ?? true,
-                    'Transaction_code' => $result['Transaction_code'] ?? $result['code'] ?? '99',
-                    'Message' => $result['message'] ?? 'Erro desconhecido',
-                ]
-            ];
         } catch (\Exception $e) {
             log_message('error', 'Erro no processamento: ' . $e->getMessage());
 
@@ -206,7 +151,7 @@ class ProcessoPagamentoController extends BaseController
                 'data' => [
                     'Error' => true,
                     'Transaction_code' => '99',
-                    'Message' => 'Erro interno'
+                    'Message' => 'Erro interno do servidor'
                 ]
             ];
         }
